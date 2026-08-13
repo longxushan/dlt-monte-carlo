@@ -238,32 +238,6 @@
     </div>
 
   </section>
-
-  <!-- 数据管理 -->
-  <section class="page" id="page-data">
-    <div class="panel">
-      <h3>🗄 数据管理</h3>
-      <div class="desc">当前内置 121 期真实开奖数据(2025-10-25 ~ 2026-08-12),打开页面时会自动拉取最新数据。也可手动在线拉取、粘贴导入或导出 CSV。</div>
-      <div class="btnrow">
-        <label class="inline">分析区间(最近 N 期)</label>
-        <select id="dataWindow">
-          <option value="30">最近 30 期</option>
-          <option value="60">最近 60 期</option>
-          <option value="90">最近 90 期</option>
-          <option value="121" selected>全部(121 期)</option>
-        </select>
-        <button class="btn" id="btnRefresh">🔄 在线拉取最新</button>
-        <button class="btn ghost" id="btnExport">⬇ 导出 CSV</button>
-      </div>
-      <div id="dataInfo" class="note" style="margin-top:0"></div>
-    </div>
-    <div class="panel">
-      <h3>📥 粘贴导入 CSV</h3>
-      <div class="desc">格式:期号,日期,前区5个,后区2个(每行一注)。示例:<br><code>26090,2026-08-10,09,14,17,19,24,02,09</code></div>
-      <textarea id="csvArea" placeholder="26090,2026-08-10,09,14,17,19,24,02,09&#10;26089,2026-08-08,03,07,12,14,26,05,11"></textarea>
-      <div class="btnrow"><button class="btn gold" id="btnImport">导入数据</button></div>
-    </div>
-  </section>
 </main>
 
 <footer>
@@ -280,8 +254,7 @@ const FRONT_N = 35, BACK_N = 12, PICK_F = 5, PICK_B = 2;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 function winRows(){
-  const n = parseInt($('#dataWindow').value) || 120;
-  return rows.slice(0, Math.min(n, rows.length));
+  return rows;
 }
 function freqOf(data){
   const f = new Array(FRONT_N+1).fill(0), b = new Array(BACK_N+1).fill(0);
@@ -314,7 +287,7 @@ const rngDef = () => Math.random();
 
 /* ================= Tab ================= */
 const TABS = [
-  ['overview','📊','概览'], ['generator','🖱','选号'], ['autogen','🎯','生成'], ['data','🗄','数据']
+  ['overview','📊','概览'], ['generator','🖱','选号'], ['autogen','🎯','生成']
 ];
 function initTabs(){
   const bar = $('#tabbar');
@@ -326,7 +299,6 @@ function switchTab(id){
   document.querySelectorAll('section.page').forEach(s => s.classList.remove('active'));
   $('#page-'+id).classList.add('active');
   if(id==='generator'){ renderPicker(); }
-  if(id==='data'){ renderDataInfo(); }
   window.scrollTo({top:0});
 }
 function showAlert(msg, dur){
@@ -711,14 +683,8 @@ async function copyGen(){
   }
 }
 
-/* ================= 数据管理 ================= */
-function renderDataInfo(){
-  const d = rows;
-  const n = winRows().length;
-  $('#dataInfo').innerHTML = `当前共 <b>${d.length}</b> 期数据(${d[d.length-1].date} ~ ${d[0].date}),分析区间取最近 <b>${n}</b> 期。数据按期号倒序(最新在前)。`;
-}
+/* ================= 自动更新最新数据 ================= */
 async function refreshOnline(){
-  const btn = $('#btnRefresh'); btn.disabled = true; btn.textContent = '拉取中...';
   try{
     const res = await fetch('https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=85&provinceId=0&pageSize=30&isVerify=1&pageNo=1', {referrerPolicy:'unsafe-url'});
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -733,45 +699,10 @@ async function refreshOnline(){
     let added = 0;
     for(const r of newRows){ if(!seen.has(r.issue)){ rows.unshift(r); added++; } }
     rows.sort((a,b)=> b.issue.localeCompare(a.issue) || b.date.localeCompare(a.date));
-    renderOverview(); renderDataInfo();
-    showAlert(`✅ 在线拉取成功,新增 ${added} 期,当前共 ${rows.length} 期`, 4000);
+    renderOverview();
   }catch(e){
-    showAlert(`⚠️ 在线拉取失败:${e.message}<br>可点击「🔄 在线拉取最新」重试,或改用下方「粘贴导入」;当前展示内置数据`, 6000);
+    /* 拉取失败时静默,沿用内置数据 */
   }
-  btn.disabled = false; btn.textContent = '🔄 在线拉取最新';
-}
-function exportCSV(){
-  const lines = ['期号,日期,前1,前2,前3,前4,前5,后1,后2'];
-  rows.forEach(r=> lines.push([r.issue, r.date, ...r.front, ...r.back].join(',')));
-  const blob = new Blob(['\ufeff'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = '大乐透开奖数据.csv'; a.click();
-  URL.revokeObjectURL(a.href);
-}
-function importCSV(){
-  const text = $('#csvArea').value.trim();
-  if(!text){ showAlert('请先粘贴数据', 3000); return; }
-  const parsed = [];
-  text.split(/\r?\n/).forEach(line=>{
-    line = line.trim(); if(!line) return;
-    const parts = line.split(/[\s,，]+/).map(x=>x.trim());
-    let issue, date, nums;
-    if(parts.length===7 && isNaN(parts[0])===false && isNaN(parts[1])===false && parts[0].length>=4){ // 纯号码: 期号 日期 5 2
-      [issue, date] = [parts[0], parts[1]]; nums = parts.slice(2).map(Number);
-    } else if(parts.length===9){ issue=parts[0]; date=parts[1]; nums=parts.slice(2).map(Number); }
-    else if(parts.length===7 && !date){ issue='C'+Date.now()%100000; date=''; nums=parts.map(Number); }
-    if(!nums || nums.length!==7 || nums.some(n=>!Number.isFinite(n))) return;
-    const front = nums.slice(0,5), back = nums.slice(5,7);
-    if(new Set(front).size!==5 || new Set(back).size!==2) return;
-    if(front.some(n=>n<1||n>35)||back.some(n=>n<1||n>12)) return;
-    parsed.push({issue, date, front, back});
-  });
-  if(!parsed.length){ showAlert('无法解析任何有效行,请检查格式', 4000); return; }
-  const seen = new Set(rows.map(r=>r.issue));
-  let added = 0; parsed.forEach(r=>{ if(!seen.has(r.issue)){ rows.push(r); added++; } });
-  rows.sort((a,b)=> b.issue.localeCompare(a.issue) || b.date.localeCompare(a.date));
-  renderOverview(); renderDataInfo();
-  showAlert(`✅ 导入成功:解析 ${parsed.length} 行,新增 ${added} 期,当前共 ${rows.length} 期`, 4000);
 }
 
 /* ================= 事件绑定 ================= */
@@ -824,10 +755,6 @@ $('#btnPickRand').onclick = randPick;
 $('#btnPickClear').onclick = () => { clearPick(); renderPicker(); };
 document.querySelectorAll('.mode-btn').forEach(b => b.onclick = () => setPickMode(b.dataset.mode));
 $('#chkBDT').onchange = function(){ pickState.bDT = this.checked; renderPicker(); };
-$('#btnRefresh').onclick = refreshOnline;
-$('#btnExport').onclick = exportCSV;
-$('#btnImport').onclick = importCSV;
-$('#dataWindow').onchange = () => { renderOverview(); };
 
 /* ================= 初始化 ================= */
 (function init(){

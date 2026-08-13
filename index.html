@@ -557,14 +557,14 @@ function renderPickProfile(){
   const pad2 = s => String(s).padStart(2,'0');
   const copyAll = total > COPY_MAX ? expandPreview(COPY_MAX).shown : expandPreview(total).shown;
   lastPickPlain = copyAll.map(t => `${t.f.map(pad2).join(' ')} ---- ${t.b.map(pad2).join(' ')}`).join('\n');
+  const st = pickState;
+  const showF = (pickMode.cur==='dantuo' ? [...st.fDan, ...st.fTuo] : [...st.front]).sort((a,b)=>a-b);
+  const showB = (pickMode.cur==='dantuo' && st.bDT ? [...st.bDan, ...st.bTuo] : [...st.back]).sort((a,b)=>a-b);
+  const isSingle = pickMode.cur==='danshi';
   const f = shown[0].f, b = shown[0].b;
   const money = total*2;
   const warn = total>10000;
   const d = winRows(), fr = freqOf(d), om = omisOf(d);
-  const s = f.reduce((a,x)=>a+x,0);
-  const odd = f.filter(x=>x%2===1).length;
-  const small = f.filter(x=>x<=17).length;
-  const z1 = f.filter(x=>x<=12).length, z2 = f.filter(x=>x>12&&x<=24).length, z3 = f.filter(x=>x>24).length;
   const fSorted = [...Array(FRONT_N)].map((_,i)=>i+1).sort((a,b)=>fr.f[b]-fr.f[a]);
   const third = Math.floor(FRONT_N/3);
   const hotSet = new Set(fSorted.slice(0, FRONT_N-third));
@@ -572,7 +572,22 @@ function renderPickProfile(){
   const hotCold = n => hotSet.has(n) ? '<span class="chip hot">热</span>' : coldSet.has(n) ? '<span class="chip cold">冷</span>' : '<span class="chip warm">温</span>';
   const miss = n => { const m = om.fo[n];
     return m>=12 ? `<span class="chip hot">遗漏${m}</span>` : m>=6 ? `<span class="chip warm">遗漏${m}</span>` : `<span class="chip cold">遗漏${m}</span>`; };
-  const sumTag = s<85 ? '<span class="chip cold">偏低</span>' : s>95 ? '<span class="chip hot">偏高</span>' : '<span class="chip warm">适中</span>';
+  let statsHtml;
+  if(isSingle){
+    const s = f.reduce((a,x)=>a+x,0);
+    const odd = f.filter(x=>x%2===1).length;
+    const small = f.filter(x=>x<=17).length;
+    const z1 = f.filter(x=>x<=12).length, z2 = f.filter(x=>x>12&&x<=24).length, z3 = f.filter(x=>x>24).length;
+    const sumTag = s<85 ? '<span class="chip cold">偏低</span>' : s>95 ? '<span class="chip hot">偏高</span>' : '<span class="chip warm">适中</span>';
+    statsHtml = `<span style="font-size:13px;color:#64748b;display:flex;gap:12px;flex-wrap:wrap">
+      <span>和值 <b>${s}</b> ${sumTag}</span>
+      <span>奇偶 <b>${odd}:${5-odd}</b></span>
+      <span>大小 <b>${small}:${5-small}</b></span>
+      <span>区间 <b>${z1}/${z2}/${z3}</b></span>
+    </span>`;
+  } else {
+    statsHtml = `<span style="font-size:13px;color:#64748b">已选 前区 <b>${showF.length}</b> 个 · 后区 <b>${showB.length}</b> 个</span>`;
+  }
   const rowsHtml = shown.map((t,i)=>`<div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
     <span class="chip" style="background:#f1f5f9;color:#64748b;min-width:30px;text-align:center">${i+1}</span>
     ${t.f.map(n=>`<span class="ball sm f">${n}</span>`).join('')}${t.b.map(n=>`<span class="ball sm b">${n}</span>`).join('')}
@@ -589,25 +604,20 @@ function renderPickProfile(){
     </div>
     <div style="margin-top:10px;background:#eef2ff;border-radius:12px;padding:12px 16px">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <span style="font-size:22px">${f.map(n=>`<span class="ball f">${n}</span>`).join('')}${b.map(n=>`<span class="ball b">${n}</span>`).join('')}</span>
-        <span style="font-size:13px;color:#64748b;display:flex;gap:12px;flex-wrap:wrap">
-          <span>和值 <b>${s}</b> ${sumTag}</span>
-          <span>奇偶 <b>${odd}:${5-odd}</b></span>
-          <span>大小 <b>${small}:${5-small}</b></span>
-          <span>区间 <b>${z1}/${z2}/${z3}</b></span>
-        </span>
+        <span style="font-size:22px">${showF.map(n=>`<span class="ball f">${n}</span>`).join('')}${showB.map(n=>`<span class="ball b">${n}</span>`).join('')}</span>
+        ${statsHtml}
       </div>
       <div style="margin-top:10px;font-size:13px;color:#334155">
-        热度:${f.map(n=>`${n}${hotCold(n)}`).join(' ')}
-        <span style="margin-left:16px">遗漏:${f.map(n=>`${n}${miss(n)}`).join(' ')}</span>
-        <span style="margin-left:16px">后区:${b.map(n=>`${n}(${fr.b[n]}次)`).join(' ')}</span>
+        热度:${showF.map(n=>`${n}${hotCold(n)}`).join(' ')}
+        <span style="margin-left:16px">遗漏:${showF.map(n=>`${n}${miss(n)}`).join(' ')}</span>
+        <span style="margin-left:16px">后区:${showB.map(n=>`${n}(${fr.b[n]}次)`).join(' ')}</span>
       </div>
     </div>
     ${total>1 ? `<div style="margin-top:12px;font-size:13px">
       <div style="font-weight:700;color:var(--text);margin-bottom:6px">📋 展开预览(${shown.length<total?`前 ${shown.length} 注 / 共 ${total.toLocaleString()} 注`:`共 ${total.toLocaleString()} 注`}):</div>
       <div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto">${rowsHtml}</div>
     </div>` : ''}
-    <div class="note" style="margin-top:10px">画像与热冷/遗漏基于展开后的<b>第一注</b>计算。${pickMode.cur==='danshi'?'':'复式/胆拖投注额=注数×2元,开奖独立随机,理性购彩。'}</div>`;
+    <div class="note" style="margin-top:10px">热冷/遗漏基于所选号码计算。${pickMode.cur==='danshi'?'':'复式/胆拖投注额=注数×2元,开奖独立随机,理性购彩。'}</div>`;
   $('#btnCopyPick').onclick = copyPick;
 }
 async function copyPick(){

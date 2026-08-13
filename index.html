@@ -553,13 +553,25 @@ function renderPickProfile(){
     return;
   }
   const {shown, total} = expandPreview(12);
-  const COPY_MAX = 5000;
   const pad2 = s => String(s).padStart(2,'0');
-  const copyAll = total > COPY_MAX ? expandPreview(COPY_MAX).shown : expandPreview(total).shown;
-  lastPickPlain = copyAll.map(t => `${t.f.map(pad2).join(' ')} ---- ${t.b.map(pad2).join(' ')}`).join('\n');
   const st = pickState;
   const showF = (pickMode.cur==='dantuo' ? [...st.fDan, ...st.fTuo] : [...st.front]).sort((a,b)=>a-b);
   const showB = (pickMode.cur==='dantuo' && st.bDT ? [...st.bDan, ...st.bTuo] : [...st.back]).sort((a,b)=>a-b);
+  // 复制内容 = 机选的完整号码(复式/胆拖复制完整集合,而非展开的 5+2 注)
+  if(pickMode.cur==='danshi' || pickMode.cur==='fushi'){
+    lastPickPlain = `${showF.map(pad2).join(' ')} ---- ${showB.map(pad2).join(' ')}`;
+  } else {
+    const dan = [...st.fDan].sort((a,b)=>a-b);
+    const tuo = [...st.fTuo].sort((a,b)=>a-b);
+    let backStr;
+    if(st.bDT){
+      const bd = [...st.bDan].sort((a,b)=>a-b), bt = [...st.bTuo].sort((a,b)=>a-b);
+      backStr = `胆 ${bd.map(pad2).join(' ')} 拖 ${bt.map(pad2).join(' ')}`;
+    } else {
+      backStr = showB.map(pad2).join(' ');
+    }
+    lastPickPlain = `胆 ${dan.map(pad2).join(' ')} 拖 ${tuo.map(pad2).join(' ')} ---- ${backStr}`;
+  }
   const isSingle = pickMode.cur==='danshi';
   const f = shown[0].f, b = shown[0].b;
   const money = total*2;
@@ -599,8 +611,8 @@ function renderPickProfile(){
       ${pickMode.cur==='fushi'||pickMode.cur==='dantuo'?`<span style="font-weight:400;font-size:12px;color:#64748b">前区 ${counts.fWays.toLocaleString()} 种 × 后区 ${counts.bWays.toLocaleString()} 种</span>`:''}
     </div>
     <div class="btnrow" style="margin-top:10px">
-      <button class="btn" id="btnCopyPick">📋 复制全部号码</button>
-      <span class="mini">${total>COPY_MAX?`注数过多,已复制前 ${COPY_MAX.toLocaleString()} 注`:`共 ${total.toLocaleString()} 注`}</span>
+      <button class="btn" id="btnCopyPick">📋 复制所选号码</button>
+      <span class="mini">${pickMode.cur==='danshi'?'单式 5+2':pickMode.cur==='fushi'?`复式 前${showF.length}+后${showB.length}`:`胆拖 胆${st.fDan.size}+拖${st.fTuo.size} 后${showB.length}`}</span>
     </div>
     <div style="margin-top:10px;background:#eef2ff;border-radius:12px;padding:12px 16px">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">

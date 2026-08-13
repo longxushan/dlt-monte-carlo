@@ -557,21 +557,30 @@ function renderPickProfile(){
   const st = pickState;
   const showF = (pickMode.cur==='dantuo' ? [...st.fDan, ...st.fTuo] : [...st.front]).sort((a,b)=>a-b);
   const showB = (pickMode.cur==='dantuo' && st.bDT ? [...st.bDan, ...st.bTuo] : [...st.back]).sort((a,b)=>a-b);
-  // 复制内容 = 机选的完整号码(复式/胆拖复制完整集合,而非展开的 5+2 注)
-  if(pickMode.cur==='danshi' || pickMode.cur==='fushi'){
-    lastPickPlain = `${showF.map(pad2).join(' ')} ---- ${showB.map(pad2).join(' ')}`;
+  // 复制内容 = 首行选法类型说明,次行为机选完整号码
+  let typeLine, numLine;
+  if(pickMode.cur==='danshi'){
+    typeLine = `【单式】前区5 后区2`;
+    numLine = `${showF.map(pad2).join(' ')} ---- ${showB.map(pad2).join(' ')}`;
+  } else if(pickMode.cur==='fushi'){
+    typeLine = `【复式】前区${showF.length} 后区${showB.length}`;
+    numLine = `${showF.map(pad2).join(' ')} ---- ${showB.map(pad2).join(' ')}`;
   } else {
     const dan = [...st.fDan].sort((a,b)=>a-b);
     const tuo = [...st.fTuo].sort((a,b)=>a-b);
-    let backStr;
+    let backStr, backDesc;
     if(st.bDT){
       const bd = [...st.bDan].sort((a,b)=>a-b), bt = [...st.bTuo].sort((a,b)=>a-b);
       backStr = `胆 ${bd.map(pad2).join(' ')} 拖 ${bt.map(pad2).join(' ')}`;
+      backDesc = `后区胆${st.bDan.size}拖${st.bTuo.size}`;
     } else {
       backStr = showB.map(pad2).join(' ');
+      backDesc = `后区${showB.length}`;
     }
-    lastPickPlain = `胆 ${dan.map(pad2).join(' ')} 拖 ${tuo.map(pad2).join(' ')} ---- ${backStr}`;
+    typeLine = `【胆拖】前区胆${st.fDan.size}拖${st.fTuo.size} ${backDesc}`;
+    numLine = `胆 ${dan.map(pad2).join(' ')} 拖 ${tuo.map(pad2).join(' ')} ---- ${backStr}`;
   }
+  lastPickPlain = `${typeLine}\n${numLine}`;
   const isSingle = pickMode.cur==='danshi';
   const f = shown[0].f, b = shown[0].b;
   const money = total*2;

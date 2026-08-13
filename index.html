@@ -580,7 +580,7 @@ function renderPickProfile(){
     typeLine = `【胆拖】前区胆${st.fDan.size}拖${st.fTuo.size} ${backDesc}`;
     numLine = `胆 ${dan.map(pad2).join(' ')} 拖 ${tuo.map(pad2).join(' ')} ---- ${backStr}`;
   }
-  lastPickPlain = `${typeLine}\n${numLine}`;
+  lastPickPlain = `${typeLine}\n${numLine}\n金额：¥${(total*2).toLocaleString()}`;
   const isSingle = pickMode.cur==='danshi';
   const f = shown[0].f, b = shown[0].b;
   const money = total*2;
